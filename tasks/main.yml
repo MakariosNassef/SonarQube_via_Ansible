@@ -60,9 +60,6 @@
         name: "{{ item }}"
         update_cache: yes
       loop:
-        #- postgresql
-        #- postgresql-{{psql_version}}
-        #- postgresql-contrib
         - nginx
 
     - name: Start Postgresql service
@@ -104,15 +101,6 @@
         db: postgres
       tags:
         - user-add
-
-    # - name: Create a new database named "sonar"
-    #   postgresql_db:
-    #     name: sonar
-    #     owner: "{{ psql_sonar_username }}"
-    #     login_user: postgres
-    #     login_password: "{{ my_postgres_password }}"
-    #   tags:
-    #     - user-add
 
     - name: Install OpenJDK 11
       apt:
@@ -167,14 +155,6 @@
         group: sonar
       tags:
         - change-ownership-sonar
-
-    # - name: Download the sonarqube-community-branch-plugin
-    #   ansible.builtin.unarchive:
-    #     src: https://github.com/mc1arke/sonarqube-community-branch-plugin/releases/download/1.14.0/sonarqube-community-branch-plugin-1.14.0.jar
-    #     dest: /opt/{{ sonarqube_version }}/extensions/plugins/
-    #     remote_src: yes
-    #   tags:
-    #     - mazz
 
     - name: SonarQube configuration.
       blockinfile:
