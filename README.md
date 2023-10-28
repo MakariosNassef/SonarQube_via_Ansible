@@ -1,42 +1,50 @@
-# SonarQube installation via Ansible
-SonarQube is an open-source platform developed by SonarSource for continuous inspection of code quality to perform automatic reviews with static analysis of code to detect bugs and code smells on 29 programming languages.
+# Ansible Playbook for Installing SonarQube
+
+## Introduction
+
+This Ansible playbook automates the installation of SonarQube on a Debian/Ubuntu-based system. It covers the installation of required packages, PostgreSQL setup, Java installation, SonarQube download and configuration, Nginx configuration, and setting up SonarQube as a service.
+
+## Prerequisites
+
+Before running this playbook, make sure you have:
+
+- Ansible installed on your control machine.
+- SSH access to the target server with sudo privileges.
+- The playbook is configured with the necessary variables (e.g., `sonarqube_version`, `psql_sonar_username`, `psql_sonar_password`, etc.).
+
+## Usage
+
+1. Clone this repository or download the playbook to your local machine.
+
+2. Update the playbook variables:
+   - Open the playbook file (e.g., `sonarqube-install.yml`) and set the required variables according to your setup. Pay attention to variables such as `sonarqube_version`, `psql_sonar_username`, and `sonar_web_port`.
+
+3. Run the playbook using the following command:
+   ```bash
+   ansible-playbook  -i inventory.ym sonarqube-install.yml
+
+1. The playbook will execute all the tasks, including downloading SonarQube, configuring PostgreSQL, Nginx, and setting up SonarQube as a service.
+
+2. Once the playbook completes, you should have SonarQube up and running. Access the SonarQube web interface by opening a web browser and navigating to http://your-server-ip:sonar_web_port.
+
+## Important Notes
+
+- Ensure that the server where you are installing SonarQube meets the system requirements for SonarQube.
+
+- Make sure to secure your SonarQube instance properly, including setting up firewalls, authentication, and access control.
+
+- Backup any data or configurations before running this playbook, especially if you are installing SonarQube on a production system.
+
+- For more information about SonarQube, please refer to the [official SonarQube documentation](https://docs.sonarqube.org/).
 
 
-Role Name
-=========
 
-A brief description of the role goes here.
+## Author
 
-Requirements
-------------
+**Makarios Nassef**  
+DevOps Engineer
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
-
-Role Variables
---------------
-
-A description of the settable variables for this role should go here, including any variables that are in defaults/main.yml, vars/main.yml, and any variables that can/should be set via parameters to the role. Any variables that are read from other roles and/or the global scope (ie. hostvars, group vars, etc.) should be mentioned here as well.
-
-Dependencies
-------------
-
-A list of other roles hosted on Galaxy should go here, plus any details in regards to parameters that may need to be set for other roles, or variables that are used from other roles.
-
-Example Playbook
-----------------
-
-Including an example of how to use your role (for instance, with variables passed in as parameters) is always nice for users too:
-
-    - hosts: servers
-      roles:
-         - { role: username.rolename, x: 42 }
-
-License
--------
-
-BSD
-
-Author Information
-------------------
-
-An optional section for the role authors to include contact information, or a website (HTML is not allowed).
+- Mobile: +20 1206330662 | +20 1099893484
+- E-mail: [makarios059@gmail.com](mailto:makarios059@gmail.com)
+- LinkedIn: [https://www.linkedin.com/in/makarios-nassef/](https://www.linkedin.com/in/makarios-nassef/)
+- Address: Cairo, Egypt

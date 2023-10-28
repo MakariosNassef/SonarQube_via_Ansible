@@ -1,9 +1,22 @@
-## set up ssh user name and path to python3 ##
-[all:vars]
-ansible_user='ubuntu'
-ansible_become=yes
-ansible_become_method=sudo
-ansible_python_interpreter='/usr/bin/env python3'
+all:
+  hosts:
+    localhost:
+      ansible_connection: local
 
-[ubuntu]
-localhost ansible_connection=local
+# example 1
+ubuntu:
+  hosts:
+    192.12.12.25:
+      ansible_user: ubuntu
+      ansible_connection: ssh
+    10.95.5.5:
+      ansible_user: ubuntu
+      ansible_connection: ssh
+
+# example 2
+centos:
+  hosts:
+    10.10.1.1:
+      ansible_user: centos
+    10.10.1.2:
+      ansible_user: centos

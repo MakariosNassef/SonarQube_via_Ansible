@@ -10,3 +10,4 @@ psql_sonar_username  :  sonar
 psql_sonar_password  :  sonar
 sonarqube_version  :  sonarqube-9.8.0.63668
 psql_version  : 14
+sonar_web_port : 9000

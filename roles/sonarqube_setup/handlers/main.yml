@@ -5,15 +5,11 @@
     name: postgresql
     state: restarted
 
-# - name: Start Postgresql
-#   systemd:
-#     name: postgresql
-#     state: started
-
-# - name: Stop Postgresql
-#   systemd:
-#     name: postgresql
-#     state: stopped
+- name: Start Postgresql
+  systemd:
+    name: postgresql
+    state: started
+    enabled: yes
 
 - name: Enable Postgresql
   systemd:
@@ -24,3 +20,9 @@
   service:
     name: sonar
     state: restarted
+
+- name: Start sonar
+  service:
+    name: sonar
+    state: started
+    enabled: yes

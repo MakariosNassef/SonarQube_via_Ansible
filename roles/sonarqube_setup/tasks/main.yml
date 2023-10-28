@@ -1,0 +1,222 @@
+---
+- name: Install required packages
+  apt:
+    name:
+      - wget
+      - python3-psycopg2
+      - acl
+      - nginx
+    state: latest
+
+- name: Update APT repositories and cache on Debian/Ubuntu
+  apt:
+    update_cache: yes
+    force_apt_get: yes
+    cache_valid_time: 3600
+
+- name: Upgrade all packages
+  apt:
+    upgrade: dist
+    force_apt_get: yes
+
+- name: Set up Postgres 14 repo
+  shell: |
+    echo "deb http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | sudo apt-key add -
+
+- name: Install postgresql
+  apt:
+    name: postgresql-14
+    update_cache: yes
+  notify:
+    - Start Postgresql
+    
+- name: Ensure PostgreSQL is listening on *
+  lineinfile:
+    dest: /etc/postgresql/14/main/postgresql.conf
+    regexp: '^listen_addresses\s*='
+    line: "listen_addresses='*'"
+    state: present
+  notify: Restart Postgresql
+
+- name: Add new configuration to "pg_hba.conf"
+  blockinfile:
+    dest: /etc/postgresql/14/main/pg_hba.conf
+    block: |
+      host    all             all             0.0.0.0/0                md5
+      host    all             all             ::/0                     md5
+  notify: Restart Postgresql
+
+- name: Create a Superuser PostgreSQL database user
+  become: true
+  become_user: postgres
+  postgresql_user:
+    name: '{{ postgres_root_user }}'
+    password: '{{ postgres_root_pass }}'
+    role_attr_flags: CREATEDB,SUPERUSER,CREATEROLE
+    encrypted: yes
+    state: present
+
+- name: Change password for the PostgreSQL user in OS
+  ansible.builtin.user:
+    name: "{{ my_postgres_user }}"
+    state: present
+    password: "{{ my_postgres_password | password_hash('sha512') }}"
+
+- name: Create Sonar User in PostgreSQL
+  become: yes
+  become_user: "{{ my_postgres_user }}"
+  postgresql_user:
+    name: "{{ psql_sonar_username }}"
+    password: "{{ psql_sonar_password }}"
+    role_attr_flags: CREATEDB,SUPERUSER,CREATEROLE
+    encrypted: yes
+    login_user: postgres
+    db: postgres
+  tags:
+    - user-add
+
+- name: Install OpenJDK 11
+  apt:
+    name: "{{ item }}"
+    update_cache: yes
+  loop:
+    - openjdk-11-jdk
+
+- name: Download SonarQube
+  ansible.builtin.get_url:
+    url: https://binaries.sonarsource.com/Distribution/sonarqube/{{ sonarqube_version }}.zip
+    dest: /opt/{{ sonarqube_version }}.zip
+  register: get_sonar
+  tags:
+    - sonar_download
+
+- name: Print the state of Download.
+  debug: 
+    msg: "soner was downloaded"
+  when: get_sonar.changed
+  tags:
+    - sonar_download
+
+- name: Extract SonarQube
+  ansible.builtin.unarchive:
+    src: /opt/{{ sonarqube_version }}.zip
+    dest: /opt
+  tags:
+    - sonar_download
+
+- name: Ensure group "sonar" exists
+  ansible.builtin.group:
+    name: sonar
+    state: present
+  tags:
+    - change-ownership-sonar
+
+- name: Add the user 'sonar' with a specific home directory and group 'sonar'
+  ansible.builtin.user:
+    name: sonar
+    group: sonar
+    home: /opt/{{ sonarqube_version }}
+  tags:
+    - change-ownership-sonar
+
+- name: Recursively change ownership of the /opt/{{ sonarqube_version }} directory
+  ansible.builtin.file:
+    path: /opt/{{ sonarqube_version }}
+    state: directory
+    recurse: yes
+    owner: sonar
+    group: sonar
+  tags:
+    - change-ownership-sonar
+
+- name: SonarQube configuration.
+  blockinfile:
+    path: /opt/{{ sonarqube_version }}/conf/sonar.properties
+    state: present
+    block: |
+      sonar.jdbc.username={{psql_sonar_username}}
+      sonar.jdbc.password={{psql_sonar_password}}
+      sonar.web.host=0.0.0.0
+      sonar.web.port={{sonar_web_port}}
+      sonar.jdbc.url=jdbc:postgresql://localhost:5432/sonar
+      sonar.web.javaAdditionalOpts=-server
+      sonar.log.level=INFO
+      sonar.path.logs=logs
+
+
+- name: This file is required for SonarQube to run as a service.
+  blockinfile:
+    path: /etc/systemd/system/sonar.service
+    create: true
+    backup: yes
+    state: present
+    block: |
+      [Unit]
+      Description=SonarQube service
+      After=syslog.target network.target
+      [Service]
+      Type=forking
+      ExecStart=/opt/{{ sonarqube_version }}/bin/linux-x86-64/sonar.sh start
+      ExecStop=/opt/{{ sonarqube_version }}/bin/linux-x86-64/sonar.sh stop
+      User=sonar
+      Group=sonar
+      Restart=always
+      LimitNOFILE=65536
+      LimitNPROC=4096
+      [Install]
+      WantedBy=multi-user.target
+  notify:
+    - Start sonar
+
+
+- name: start nginx
+  service: 
+    name: nginx
+    state: started
+    enabled: yes
+
+- name: Touch sonarqube.conf.
+  ansible.builtin.file:
+    path: /etc/nginx/sites-enabled/sonarqube.conf
+    state: touch
+    mode: '1777'
+
+- name: Add custom maillog config
+  blockinfile:
+    path: /etc/nginx/sites-enabled/sonarqube.conf
+    backup: yes
+    insertafter: "#\n# Logging for the mail system.  Split it up so that\n# it is easy to write scripts to parse these files.\n#"
+    block: |-
+      server{
+          listen      {{sonar_web_port}};
+          #server_name sonarqube.developerinsider.co;
+          access_log  /var/log/nginx/sonar.access.log;
+          error_log   /var/log/nginx/sonar.error.log;
+          proxy_buffers 16 64k;
+          proxy_buffer_size 128k;
+          location / {
+              proxy_pass  http://127.0.0.1:{{sonar_web_port}};
+              proxy_next_upstream error timeout invalid_header http_500 http_502 http_503 http_504;
+              proxy_redirect off;
+              proxy_set_header    Host            $host;
+              proxy_set_header    X-Real-IP       $remote_addr;
+              proxy_set_header    X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header    X-Forwarded-Proto http;
+          }
+      }
+    state: present
+  tags:
+    - config_nginx
+
+- name: restart nginx
+  service: 
+    name: nginx 
+    state: restarted
+  notify:
+    - Restart sonar
+  tags:
+    - config_nginx
+
+
+
