@@ -3,6 +3,9 @@
 ## Introduction
 This Ansible playbook automates the installation of SonarQube on a Debian/Ubuntu-based system. It ensures clean code quality for all! 🧹
 
+![1_rn-sO9oWLn9lYO7jkVO6og](https://github.com/MakariosNassef/SonarQube_via_Ansible/assets/28235504/444c376f-7791-4f32-91fd-cf246254ca91)
+
+
 ## Prerequisites
 Before diving into the world of clean code, make sure you have the following:
 
